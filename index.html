@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>js13k 2026 @scmx</title>
+    <link rel="stylesheet" href="game.css" />
+    <link
+      data-build="site"
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 16 16'><text x='0' y='14'>💙</text></svg>"
+    />
+    <link data-build="site" rel="manifest" id="manifest" />
+    <script data-build="site" src="manifest.js"></script>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <div class="game-controls">
+      <button id="restart" type="button">↻</button>
+      <button id="sound" type="button">🔊</button>
+      <button id="player2" type="button">➕</button>
+      <button
+        hidden
+        data-build="dev"
+        id="gather"
+        type="button"
+        style="
+          --control-angle: -72deg;
+          border-radius: 0;
+          width: 8cqmin;
+          height: 8cqmin;
+          font-size: 4cqmin;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(var(--control-angle))
+            translateY(-57cqmin) rotate(calc(var(--control-angle) * -1));
+        "
+      >
+        🐟
+      </button>
+      <button
+        hidden
+        data-build="dev"
+        id="deep"
+        type="button"
+        style="--control-angle:-54deg;top:50%;left:50%;transform:translate(-50%,-50%) rotate(var(--control-angle)) translateY(-57cqmin) rotate(calc(var(--control-angle) * -1));border-radius:0;width:8cqmin;height:8cqmin;font-size:4cqmin"
+      >🌊</button>
+    </div>
+    <script data-build="dev">
+      globalThis.wavedash = new Proxy(Object.create(null), {
+        get: () => () => {},
+      })
+      globalThis.wavedashEvent = (name) =>
+        globalThis.wavedash.setAchievement(name, true)
+      globalThis.wavedashScore = () => {}
+    </script>
+    <script
+      data-build="game"
+      data-relay="wss://relay.js13kgames.com/whatever-you-fancy"
+      type="module"
+    >
+      import init from "./game.js"
+      init(canvas.getContext("2d"), new WebSocket(`//${location.host}/ws`))
+    </script>
+    <script data-build="wavedash" type="module" data-src="wave.js"></script>
+  </body>
+</html>
