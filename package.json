@@ -1,0 +1,41 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node reload.js",
+    "start": "node server.js",
+    "test": "node --test --watch *.test.js",
+    "lint": "tsc -p jsconfig.json && eslint .",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "google-closure-compiler": "^20260831.0.0",
+    "html-minifier-terser": "^7.2.0",
+    "jsdom": "^29.1.1",
+    "jszip": "^3.10.1",
+    "roadroller": "^2.1.0",
+    "terser": "^5.50.0",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/google-closure-compiler": "^20231112.0.0",
+    "@types/html-minifier-terser": "^7.0.2",
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^26.2.0",
+    "@types/ws": "^8.18.1",
+    "@wvdsh/sdk-js": "^1.3.45",
+    "eslint": "^10.8.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.9.6",
+    "prettier-plugin-css-order": "^2.2.0",
+    "typescript": "^7.0.2"
+  },
+  "prettier": {
+    "semi": false,
+    "plugins": [
+      "prettier-plugin-css-order"
+    ],
+    "cssDeclarationSorterKeepOverrides": false
+  }
+}
