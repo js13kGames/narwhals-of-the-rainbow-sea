@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fish renderer debug</title>
+    <link rel="stylesheet" href="game.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #082f49;
+        min-height: 100%;
+        color: #e0f2fe;
+        font:
+          16px system-ui,
+          sans-serif;
+      }
+      body {
+        box-sizing: border-box;
+      }
+      #canvases {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 8px;
+        padding: 8px;
+      }
+      canvas {
+        border: 1px solid #38bdf8;
+        background: #0c4a6e;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="canvases"></div>
+    <script type="module" src="./debug.js"></script>
+  </body>
+</html>
