@@ -587,6 +587,10 @@ function inlineGameAssets(html, css, js) {
 function releaseHtml(source, variant) {
   const dom = new JSDOM(source, { runScripts: "outside-only" })
   const document = dom.window.document
+  if (variant !== "wavedash") {
+    document.documentElement.removeAttribute("lang")
+    document.querySelector("title")?.remove()
+  }
   for (const element of document.querySelectorAll(
     '[data-build="site"], [data-build="dev"]',
   ))

@@ -49,9 +49,8 @@ canvas {
   touch-action: manipulation;
   pointer-events: auto;
   color: #f8fafc;
-  font: 5cqmin sans-serif;
+  font: 5cqmin emoji;
   line-height: 1;
-  font-family: emoji;
 }
 .game-controls button:active {
   background: #334155ee;

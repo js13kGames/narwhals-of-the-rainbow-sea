@@ -19,14 +19,13 @@
   <body>
     <canvas id="canvas"></canvas>
     <div class="game-controls">
-      <button id="restart" type="button">↻</button>
-      <button id="sound" type="button">🔊</button>
-      <button id="player2" type="button">➕</button>
+      <button id="restart">↻</button>
+      <button id="sound">🔊</button>
+      <button id="player2">➕</button>
       <button
         hidden
         data-build="dev"
         id="gather"
-        type="button"
         style="
           --control-angle: -72deg;
           border-radius: 0;
@@ -45,9 +44,20 @@
         hidden
         data-build="dev"
         id="deep"
-        type="button"
-        style="--control-angle:-54deg;top:50%;left:50%;transform:translate(-50%,-50%) rotate(var(--control-angle)) translateY(-57cqmin) rotate(calc(var(--control-angle) * -1));border-radius:0;width:8cqmin;height:8cqmin;font-size:4cqmin"
-      >🌊</button>
+        style="
+          --control-angle: -54deg;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(var(--control-angle))
+            translateY(-57cqmin) rotate(calc(var(--control-angle) * -1));
+          border-radius: 0;
+          width: 8cqmin;
+          height: 8cqmin;
+          font-size: 4cqmin;
+        "
+      >
+        🌊
+      </button>
     </div>
     <script data-build="dev">
       globalThis.wavedash = new Proxy(Object.create(null), {
