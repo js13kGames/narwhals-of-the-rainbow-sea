@@ -3039,7 +3039,7 @@ function updateNarwhals(model) {
 }
 
 /** @param {GameModel} model */
-function updateDeepNpcs(model) {
+export function updateDeepNpcs(model) {
   for (const npc of model._deepNpcs) {
     if (npc._isDead) {
       npc._respawnTimer -= model._interval
@@ -3135,7 +3135,9 @@ function updateDeepNpcs(model) {
     const routeDx = wrapDelta(target.x - npc._pos.x, model._worldWidth)
     const routeDy = target.y - npc._pos.y
     const routeDistance = Math.hypot(routeDx, routeDy)
-    if (routeDistance < 1) continue
+    // Keep steering anglers onto the tunnel centre even when the remaining
+    // waypoint distance is less than the normal one-pixel cutoff.
+    if (routeDistance < (npc._isAngler ? 0.01 : 1)) continue
     const dir = { x: routeDx / routeDistance, y: routeDy / routeDistance }
     const speed = npc._isHunting
       ? npc._speed * 8
@@ -3152,8 +3154,8 @@ function updateDeepNpcs(model) {
       // and move one axis at a time so a diagonal step cannot wedge it on a
       // wall or leave it oscillating at the entrance.
       const inTransition = npc._pos.y >= 100 && npc._pos.y <= 150
-      const outsideTunnel = npc._pos.x < 40 || npc._pos.x > 60
-      if (inTransition && outsideTunnel) {
+      const centeredInTunnel = Math.abs(npc._pos.x - 50) < 0.01
+      if (inTransition && !centeredInTunnel) {
         next = {
           x: wrapPosition(
             npc._pos.x + clamp(50 - npc._pos.x, -step, step),
@@ -3161,7 +3163,7 @@ function updateDeepNpcs(model) {
           ),
           y: npc._pos.y,
         }
-      } else if (inTransition && !outsideTunnel) {
+      } else if (inTransition && centeredInTunnel) {
         next = { x: npc._pos.x, y: npc._pos.y + dir.y * step }
       }
     }
@@ -3172,7 +3174,7 @@ function updateDeepNpcs(model) {
       const inTunnelApproach =
         npc._pos.y >= 100 &&
         npc._pos.y <= 150 &&
-        (npc._pos.x < 40 || npc._pos.x > 60)
+        Math.abs(npc._pos.x - 50) >= 0.01
       if (npc._isAngler && inTunnelApproach) {
         next = {
           x: wrapPosition(

@@ -12,6 +12,7 @@ const {
   getDarkfriendFollowTarget,
   pierceAngler,
   updateFriends,
+  updateDeepNpcs,
   updateLampInteractions,
   tunnelWaypoint,
 } = await import("./game.js")
@@ -177,6 +178,40 @@ test("darkfriend update reaches its deep formation target", () => {
   assert.equal(reached, true)
   assert.ok(Math.abs(darkfriend._pos.x - 128) < 0.01)
   assert.ok(Math.abs(darkfriend._pos.y - 220) < 0.01)
+})
+
+test("angler reenters deep water through the tunnel", () => {
+  const model = makeModel()
+  model._size = 100
+  model._worldHeight = 350
+  model._speed = 0.5
+  model._interval = 50
+  model._players = []
+  model._friends = []
+
+  const player = new GamePlayer()
+  player._free = false
+  player._pos = { x: 120, y: 220 }
+  const angler = new GameAnglerFish()
+  angler._free = false
+  angler._isHunting = false
+  angler._pos = { x: 450, y: 20 }
+  angler._nextPos = { x: 120, y: 220 }
+  model._players.push(player)
+  model._deepNpcs = [angler]
+
+  const maxTicks = 10000
+  let reached = false
+  for (let tick = 0; tick < maxTicks; tick++) {
+    updateDeepNpcs(model)
+    if (angler._pos.y >= 150) {
+      reached = true
+      break
+    }
+  }
+
+  assert.equal(reached, true)
+  assert.ok(angler._pos.x >= 0 && angler._pos.x <= 200)
 })
 
 test("deep exit spawns one star and pickup extends boost", () => {
