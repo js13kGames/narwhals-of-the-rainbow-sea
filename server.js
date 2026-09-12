@@ -318,7 +318,9 @@ async function runRoadroller(input, date) {
       [{ data: input, type: "text", action: "write" }],
       {},
     )
-    await packer.optimize()
+    // Use the fork's thorough release search. It is slower than the default
+    // quick search, but the submission size is worth the extra build time.
+    await packer.optimize(2)
     const { firstLine, secondLine } = packer.makeDecoder()
     const output = `<!doctype html><script>${firstLine}${secondLine}</script>`
     const distPath = resolve("./dist/roadroller")
