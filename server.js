@@ -155,6 +155,9 @@ function handleEventStream(req, res) {
 }
 
 const liveReloadScript = `
+    <script>
+      globalThis.devWebSocket = new WebSocket("//" + location.host + "/ws");
+    </script>
     <script type="module">
       const source = new EventSource(location.origin);
       source.onmessage = (event) => {
@@ -604,6 +607,10 @@ function releaseHtml(source, variant) {
       element.setAttribute("src", element.getAttribute("data-src") || "")
     }
   } else {
+    for (const script of document.querySelectorAll(
+      'script[data-build="game"]',
+    ))
+      script.textContent = ""
     for (const element of document.querySelectorAll('[data-build="wavedash"]'))
       element.remove()
     for (const script of document.scripts) {

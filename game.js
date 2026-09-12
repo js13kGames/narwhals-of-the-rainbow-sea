@@ -62,10 +62,13 @@ const KEYS = [
 const TURBO_KEYS = ["Space", "KeyE"]
 
 /**
+ * @param {WebSocket | undefined} [ws]
  * @param {CanvasRenderingContext2D} ctx
- * @param {WebSocket | undefined} ws
  */
-export default function (ctx, ws) {
+export function init(
+  ws,
+  ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext("2d")),
+) {
   const keyboard = initKeyboard()
   const model = new GameModel()
   try {
@@ -251,6 +254,14 @@ export default function (ctx, ws) {
     }
   }
 }
+// Local development and GitHub Pages set this false through the bootstrap;
+// release stripping removes that assignment and runs the relay init.
+// eslint-disable-next-line no-useless-assignment
+var initNow = true
+initNow = false // DEV ONLY
+// @ts-ignore
+if (initNow)
+  init(new WebSocket("wss://relay.js13kgames.com/narwhals-of-the-rainbow-sea"))
 
 function devListenDeep() {
   deep?.addEventListener("pointerdown", (event) => {

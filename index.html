@@ -67,13 +67,9 @@
         globalThis.wavedash.setAchievement(name, true)
       globalThis.wavedashScore = () => {}
     </script>
-    <script
-      data-build="game"
-      data-relay="wss://relay.js13kgames.com/whatever-you-fancy"
-      type="module"
-    >
-      import init from "./game.js"
-      init(canvas.getContext("2d"), new WebSocket(`//${location.host}/ws`))
+    <script data-build="game" type="module">
+      import { init } from "./game.js"
+      init(globalThis.devWebSocket)
     </script>
     <script data-build="wavedash" type="module" data-src="wave.js"></script>
   </body>
