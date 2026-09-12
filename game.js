@@ -4267,7 +4267,6 @@ class GameAudio {
   /** @type {AudioContext | null} */
   _context = null
   _musicTimer = 0
-  _bubbleTimer = 0
   _musicStep = 0
   _lastSwim = 0
   _lastNearAngler = 0
@@ -4308,16 +4307,13 @@ function startAudio(audio) {
     audio._musicTimer = window.setInterval(() => playMusicNote(audio), 460)
     if (context.state === "running") playMusicNote(audio)
   }
-  if (!audio._bubbleTimer) scheduleAudioBubble(audio)
 }
 
 /** @param {GameAudio} audio */
 function pauseAudio(audio) {
   audio._paused = true
   if (audio._musicTimer) window.clearInterval(audio._musicTimer)
-  if (audio._bubbleTimer) window.clearTimeout(audio._bubbleTimer)
   audio._musicTimer = 0
-  audio._bubbleTimer = 0
   if (audio._context?.state === "running") void audio._context.suspend()
 }
 
@@ -4335,41 +4331,12 @@ function resumeAudio(audio) {
   }
 }
 
-/** @param {GameAudio} audio */
-function scheduleAudioBubble(audio) {
-  if (!audio._enabled) return
-  const delay = 280 + Math.random() * 900
-  audio._bubbleTimer = window.setTimeout(() => {
-    audio._bubbleTimer = 0
-    if (!audio._enabled) return
-    const frequency = 95 + Math.random() * 75
-    audioTone(audio, frequency, 0.08, "sine", 0.018, -frequency * 0.35)
-    if (Math.random() < 0.42) {
-      window.setTimeout(
-        () =>
-          audioTone(
-            audio,
-            frequency * (0.8 + Math.random() * 0.25),
-            0.07,
-            "sine",
-            0.014,
-            -frequency * 0.3,
-          ),
-        110 + Math.random() * 180,
-      )
-    }
-    scheduleAudioBubble(audio)
-  }, delay)
-}
-
 /** @param {GameAudio} audio @param {boolean} enabled */
 function setAudioEnabled(audio, enabled) {
   audio._enabled = enabled
   if (!enabled) {
     if (audio._musicTimer) window.clearInterval(audio._musicTimer)
-    if (audio._bubbleTimer) window.clearTimeout(audio._bubbleTimer)
     audio._musicTimer = 0
-    audio._bubbleTimer = 0
     return
   }
   startAudio(audio)
