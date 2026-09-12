@@ -1271,6 +1271,17 @@ function getHudDepth(model) {
 function drawMobileControls(model, view, ctx) {
   const layout = getMobileControlLayout(view, ctx.canvas)
   const { radius } = layout
+  // In 1P mode either mobile control feeds player 1. The merged input is
+  // stored in slot 0, but the visualization should stay on the control that
+  // supplied the active movement. Since getInputs() processes left then
+  // right, the last active control matches the movement that wins the merge
+  // when both are held.
+  let activeMobileControl = -1
+  if (!model._player2Enabled) {
+    for (let i = 0; i < model._mobileInputs.length; i++) {
+      if (model._mobileInputs[i]?._velocity) activeMobileControl = i
+    }
+  }
   ctx.save()
   ctx.textAlign = "center"
   ctx.textBaseline = "middle"
@@ -1279,100 +1290,163 @@ function drawMobileControls(model, view, ctx) {
     const center = layout.controls[i]
     const turboCenter = layout.turboCenters[i]
     if (!center || !turboCenter) continue
-    const pointer = model._mobilePointers[i]
-    const movement = model._gearMovement[i]
-    const gearTargetAngle = model._gearAngles[i] ?? 0
-    const keyboardInput = model._gearInputTypes[i] === "keyboard"
-    const gearAngle = (model._gearRenderAngles[i] = keyboardInput
-      ? lerpAngle(
-          model._gearRenderAngles[i] ?? gearTargetAngle,
-          gearTargetAngle,
-          0.45,
-        )
-      : gearTargetAngle)
-    let inner = center
-    if (movement) {
-      const dx = pointer ? pointer.current.x - pointer.start.x : movement.x
-      const dy = pointer ? pointer.current.y - pointer.start.y : movement.y
-      const length = pointer ? Math.hypot(dx, dy) : 1
-      // The Z16 center may travel to the pitch-radius gap inside the Z24
-      // socket. innerRadius is only the touch hit area, not the travel limit.
-      const direction = pointer
-        ? { x: dx / Math.max(1, length), y: dy / Math.max(1, length) }
-        : { x: Math.cos(gearAngle), y: Math.sin(gearAngle) }
-      const travel = pointer
-        ? Math.min(length, layout.gearSnapRadius)
-        : layout.gearSnapRadius
-      if (travel > 0) {
-        const snapDistance =
-          !pointer || length >= layout.gearSnapRadius * 0.72
-            ? layout.gearSnapRadius
-            : Math.min(travel, layout.gearSnapRadius)
-        inner = {
-          x: center.x + direction.x * snapDistance,
-          y: center.y + direction.y * snapDistance,
-        }
-      }
-    }
-
-    drawInternalGear(
+    const { pointer, movement, gearAngle } = getMobileControlState(
+      model,
+      i,
+      activeMobileControl,
+    )
+    drawMobileControl(
+      model,
       ctx,
-      center.x,
-      center.y,
+      center,
+      turboCenter,
       radius,
-      24,
-      layout.gearModule,
+      layout,
+      gearAngle,
+      pointer,
+      movement,
       i === 0
         ? ["#3f1d12", "#9a3412", "#ea580c"]
         : ["#052e16", "#166534", "#22c55e"],
-    )
-
-    // The gear stays visible, but its phase changes only while movement input
-    // is held. update() drives this for touch, keyboard, and gamepad alike.
-    // A Z16 planet rolling in a fixed Z24 internal gear turns at half the
-    // opposite angular speed of its center. The half-tooth phase keeps the
-    // tooth lands in the fixed gear's tooth gaps at every snapped position.
-    const orbitAngle = gearAngle
-    const cogRotation = -orbitAngle * 0.5 + PI / 16
-    drawCogWheel(
-      ctx,
-      inner.x,
-      inner.y,
-      layout.cogRadius,
-      16,
-      layout.gearModule,
-      cogRotation,
-      "#6b7280",
-      { dark: "#374151", light: "#d1d5db", faint: "#9ca3af" },
-    )
-
-    const turboWidth = radius * 0.8
-    const turboHeight = radius * 0.45
-    ctx.beginPath()
-    ctx.roundRect(
-      turboCenter.x - turboWidth / 2,
-      turboCenter.y - turboHeight / 2,
-      turboWidth,
-      turboHeight,
-      turboHeight * 0.3,
-    )
-    const turboActive = model._mobileTurboPointers.some(
-      (activePointer) => activePointer !== null,
-    )
-    ctx.fillStyle = turboActive ? "#facc15aa" : "#020617bb"
-    ctx.fill()
-    ctx.strokeStyle = "#facc15cc"
-    ctx.stroke()
-    ctx.fillStyle = "#fef08a"
-    ctx.fillText("⚡", turboCenter.x, turboCenter.y)
-    ctx.fillStyle = "#f8fafcaa"
-    ctx.fillText(
       model._player2Enabled ? `P${i + 1}` : "P1",
-      center.x,
-      center.y - radius * 1.18,
     )
   }
   ctx.restore()
+}
+
+/**
+ * @param {GameModel} model
+ * @param {number} index
+ * @param {number} activeMobileControl
+ * @returns {{pointer: {start: GamePos, current: GamePos} | null | undefined, movement: GamePos | undefined, gearAngle: number}}
+ */
+function getMobileControlState(model, index, activeMobileControl) {
+  const onePlayer = !model._player2Enabled
+  const activeControl = onePlayer && index === activeMobileControl
+  const inactiveControl =
+    onePlayer && activeMobileControl >= 0 && !activeControl
+  const inputIndex = activeControl ? activeMobileControl : index
+  const pointer = inactiveControl
+    ? undefined
+    : model._mobilePointers[inputIndex]
+  const movement = inactiveControl
+    ? undefined
+    : activeControl
+      ? model._mobileInputs[inputIndex]?._velocity
+      : model._gearMovement[index]
+  const gearTargetAngle = inactiveControl
+    ? 0
+    : (model._gearAngles[activeControl ? 0 : index] ?? 0)
+  const keyboardInput =
+    !activeControl &&
+    !inactiveControl &&
+    model._gearInputTypes[index] === "keyboard"
+  const gearAngle = (model._gearRenderAngles[index] = keyboardInput
+    ? lerpAngle(
+        model._gearRenderAngles[index] ?? gearTargetAngle,
+        gearTargetAngle,
+        0.45,
+      )
+    : gearTargetAngle)
+  return { pointer, movement, gearAngle }
+}
+
+/**
+ * @param {GameModel} model
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {GamePos} center
+ * @param {GamePos} turboCenter
+ * @param {number} radius
+ * @param {{cogRadius: number, gearModule: number, gearSnapRadius: number}} layout
+ * @param {number} gearAngle
+ * @param {{start: GamePos, current: GamePos} | null | undefined} pointer
+ * @param {GamePos | undefined} movement
+ * @param {[string, string, string]} color
+ * @param {string} label
+ */
+function drawMobileControl(
+  model,
+  ctx,
+  center,
+  turboCenter,
+  radius,
+  layout,
+  gearAngle,
+  pointer,
+  movement,
+  color,
+  label,
+) {
+  let inner = center
+  if (movement) {
+    const dx = pointer ? pointer.current.x - pointer.start.x : movement.x
+    const dy = pointer ? pointer.current.y - pointer.start.y : movement.y
+    const length = pointer ? Math.hypot(dx, dy) : 1
+    // The Z16 center may travel to the pitch-radius gap inside the Z24
+    // socket. innerRadius is only the touch hit area, not the travel limit.
+    const direction = pointer
+      ? { x: dx / Math.max(1, length), y: dy / Math.max(1, length) }
+      : { x: Math.cos(gearAngle), y: Math.sin(gearAngle) }
+    const travel = pointer
+      ? Math.min(length, layout.gearSnapRadius)
+      : layout.gearSnapRadius
+    if (travel > 0) {
+      const snapDistance =
+        !pointer || length >= layout.gearSnapRadius * 0.72
+          ? layout.gearSnapRadius
+          : Math.min(travel, layout.gearSnapRadius)
+      inner = {
+        x: center.x + direction.x * snapDistance,
+        y: center.y + direction.y * snapDistance,
+      }
+    }
+  }
+
+  drawInternalGear(
+    ctx,
+    center.x,
+    center.y,
+    radius,
+    24,
+    layout.gearModule,
+    color,
+  )
+
+  // A Z16 planet rolling in a fixed Z24 internal gear turns at half the
+  // opposite angular speed of its center.
+  drawCogWheel(
+    ctx,
+    inner.x,
+    inner.y,
+    layout.cogRadius,
+    16,
+    layout.gearModule,
+    -gearAngle * 0.5 + PI / 16,
+    "#6b7280",
+    { dark: "#374151", light: "#d1d5db", faint: "#9ca3af" },
+  )
+
+  const turboWidth = radius * 0.8
+  const turboHeight = radius * 0.45
+  ctx.beginPath()
+  ctx.roundRect(
+    turboCenter.x - turboWidth / 2,
+    turboCenter.y - turboHeight / 2,
+    turboWidth,
+    turboHeight,
+    turboHeight * 0.3,
+  )
+  const turboActive = model._mobileTurboPointers.some(
+    (activePointer) => activePointer !== null,
+  )
+  ctx.fillStyle = turboActive ? "#facc15aa" : "#020617bb"
+  ctx.fill()
+  ctx.strokeStyle = "#facc15cc"
+  ctx.stroke()
+  ctx.fillStyle = "#fef08a"
+  ctx.fillText("⚡", turboCenter.x, turboCenter.y)
+  ctx.fillStyle = "#f8fafcaa"
+  ctx.fillText(label, center.x, center.y - radius * 1.18)
 }
 
 /**
@@ -3351,7 +3425,8 @@ export function updateLampInteractions(model) {
         Math.hypot(
           wrapDelta(candidate._pos.x - star._pos.x, model._worldWidth),
           candidate._pos.y - star._pos.y,
-        ) < candidate._radius + star._radius,
+        ) <
+          candidate._radius + star._radius,
     )
     if (!player) continue
     star._free = true
