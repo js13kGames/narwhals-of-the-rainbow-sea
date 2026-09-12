@@ -1,4 +1,5 @@
 import JSZip from "jszip"
+import { execFile as execFileCallback } from "node:child_process"
 import { mkdirSync, readdirSync } from "node:fs"
 import { mkdtemp, readFile, rm, watch, writeFile } from "node:fs/promises"
 import { minify } from "terser"
@@ -12,6 +13,9 @@ import WebSocket, { WebSocketServer } from "ws"
 import { join, resolve } from "node:path"
 import { tmpdir } from "node:os"
 import { createHash } from "node:crypto"
+import { promisify } from "node:util"
+
+const execFile = promisify(execFileCallback)
 
 const port = Number(process.env["PORT"] || 8002)
 const host = "0.0.0.0"
@@ -329,9 +333,13 @@ async function runRoadroller(input, date) {
       compressionOptions: { level: 9 },
     })
     await writeFile(resolve("./dist", `roadroller-${date}.zip`), zipContent)
-    logStage("Roadrolled", zipContent.length, Buffer.byteLength(input))
+    await recompressZip(resolve("./dist", `roadroller-${date}.zip`))
+    const recompressedZip = await readFile(
+      resolve("./dist", `roadroller-${date}.zip`),
+    )
+    logStage("Roadrolled", recompressedZip.length, Buffer.byteLength(input))
     log(
-      `${"Result".padEnd(10)} ${String(13312 - zipContent.length).padStart(5)} bytes left`,
+      `${"Result".padEnd(10)} ${String(13312 - recompressedZip.length).padStart(5)} bytes left`,
     )
   } catch (err) {
     log(`Roadroller failed: ${formatError(err)} (input ${hash(input)})`)
@@ -663,7 +671,24 @@ async function writeZip(variant, date) {
     compressionOptions: { level: 9 },
   })
   await writeFile(resolve("./dist", `${variant}-${date}.zip`), content)
-  return content.length
+  await recompressZip(resolve("./dist", `${variant}-${date}.zip`))
+  return (await readFile(resolve("./dist", `${variant}-${date}.zip`))).length
+}
+
+/** @param {string} archivePath */
+async function recompressZip(archivePath) {
+  try {
+    await execFile("advzip", [
+      "--recompress",
+      "--shrink-insane",
+      "--iter",
+      "1000",
+      archivePath,
+    ])
+  } catch (err) {
+    // Keep the JSZip result when advzip is unavailable or fails on a platform.
+    log(`advzip unavailable: ${formatError(err)}`)
+  }
 }
 
 /** @param {string} variant @param {string} html @param {string} date @param {string} label */
