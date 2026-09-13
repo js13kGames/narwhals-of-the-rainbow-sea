@@ -266,3 +266,27 @@ test("piercing an angler spawns at most one additional angler", () => {
   pierceAngler(angler, model)
   assert.equal(model._deepNpcs.length, 2)
 })
+
+test("victory remains after each player defeats an angler", () => {
+  const model = makeModel()
+  model._deepNpcs = []
+  model._particles = []
+  model._victory = false
+  model._pierced = 0
+  model._players = [new GamePlayer(), new GamePlayer()]
+  const firstPlayer = model._players[0]
+  const secondPlayer = model._players[1]
+  if (!firstPlayer || !secondPlayer) throw new Error("players were not created")
+  firstPlayer._free = false
+  secondPlayer._free = false
+  const angler = new GameAnglerFish()
+  angler._free = false
+  model._deepNpcs.push(angler)
+
+  pierceAngler(angler, model)
+  assert.equal(model._victory, false)
+  const secondAngler = model._deepNpcs[1]
+  if (!secondAngler) throw new Error("second angler was not spawned")
+  pierceAngler(secondAngler, model)
+  assert.equal(model._victory, true)
+})

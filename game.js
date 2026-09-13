@@ -160,6 +160,8 @@ export class GameModel {
   _score = 0
   _eaten = 0
   _pierced = 0
+  _victory = false
+  _musicOverride = 0
   _stars = 0
   _wasDeep = false
   _highScore = 0
@@ -1123,8 +1125,9 @@ export function keyup(event, keyboard) {
 
 /** @param {GameModel} model */
 function getMusicTheme(model) {
+  if (model._musicOverride > 0) return "victory"
   const anglerActive = model._deepNpcs.some(
-    (npc) => !npc._free && npc._isAngler,
+    (npc) => !npc._free && !npc._isDead && npc._isAngler && npc._pos.y < 100,
   )
   if (anglerActive) {
     model._deepReached = true
@@ -1568,6 +1571,26 @@ function drawHud(model, view, ctx) {
     ctx.rotate(angle)
     ctx.fillText(text, 0, -textRadius)
     ctx.restore()
+  }
+  if (model._victory) {
+    const letters = Array.from("🎉VICTORY🥳")
+    const rotation = performance.now() * 0.00012
+    const spacing = 0.12
+    ctx.font = `${Math.max(14, view._size * 0.025)}px sans-serif`
+    for (let i = 0; i < letters.length; i++) {
+      const letter = letters[i]
+      if (!letter) continue
+      const angle = rotation + (i - (letters.length - 1) / 2) * spacing
+      ctx.save()
+      ctx.translate(
+        centerX + Math.cos(angle) * textRadius,
+        centerY + Math.sin(angle) * textRadius,
+      )
+      if (letter !== "🥳" && letter !== "🎉") ctx.rotate(angle + Math.PI / 2)
+      ctx.fillStyle = RAINBOW[i % RAINBOW.length] || COLOR_RED
+      ctx.fillText(letter, 0, 0)
+      ctx.restore()
+    }
   }
   ctx.restore()
 }
@@ -3685,6 +3708,12 @@ function handleAnglerCollisions(angler, model) {
 /** @param {GameAnglerFish} angler @param {GameModel} model */
 export function pierceAngler(angler, model) {
   model._pierced++
+  model._musicOverride = 4000
+  const playerCount = Math.max(
+    1,
+    model._players?.filter((player) => !player._free).length ?? 1,
+  )
+  if (model._pierced >= playerCount) model._victory = true
   if (model._deepNpcs.length < 2) {
     const second = new GameAnglerFish()
     second._free = false
@@ -3841,6 +3870,7 @@ function updateJump(player, model) {
  * @param {GameInput[]} inputs
  */
 export function update(model, inputs) {
+  model._musicOverride = Math.max(0, model._musicOverride - model._interval)
   const playersSeparated = getLocalPlayerDistance(model) > model._size * 0.9
   if (playersSeparated && !model._wasSeparated) gameEventPlayerAlone(model)
   if (!playersSeparated && model._wasSeparated) gameEventPlayersTogether(model)
@@ -4532,6 +4562,12 @@ function playMusicNote(audio) {
       duration: 0.38,
       type: AUDIO_SINE,
       volume: 0.021,
+    },
+    victory: {
+      notes: [262, 330, 392, 523, 440, 523, 659, 784],
+      duration: 0.24,
+      type: AUDIO_TRIANGLE,
+      volume: 0.035,
     },
     narwhal: {
       notes: [82.41, 87.31, 82.41, 92.5, 82.41, 87.31],
