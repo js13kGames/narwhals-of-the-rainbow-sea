@@ -6,6 +6,10 @@ const TURBO_DRAIN_PER_SECOND = 2
 const TURBO_RECHARGE_PER_SECOND = 1
 const PLAYER_RESPAWN_DELAY = 1000
 const ACTIONS = ["up", "left", "down", "right", "action"]
+const AUDIO_SINE = "sine"
+const AUDIO_SQUARE = "square"
+const AUDIO_TRIANGLE = "triangle"
+const AUDIO_SAWTOOTH = "sawtooth"
 var COLOR_RED = /** @readonly} */ "oklch(0.65 0.22 25)"
 var COLOR_ORANGE = /** @readonly} */ "oklch(0.72 0.19 50)"
 var COLOR_YELLOW = /** @readonly} */ "oklch(0.88 0.18 95)"
@@ -18,18 +22,11 @@ var COLOR_TWO = /** @readonly} */ "#374151"
 var COLOR_THREE = /** @readonly} */ "#1f2937"
 var COLOR_DEEP = /** @readonly} */ "#030712"
 var COLOR_FAINT = /** @readonly} */ "#0004"
-var RAINBOW = [
-  COLOR_RED,
-  COLOR_ORANGE,
-  COLOR_YELLOW,
-  COLOR_GREEN,
-  COLOR_CYAN,
-  COLOR_BLUE,
-  COLOR_PURPLE,
-]
+// prettier-ignore
+var RAINBOW = [COLOR_RED, COLOR_ORANGE, COLOR_YELLOW, COLOR_GREEN, COLOR_CYAN, COLOR_BLUE, COLOR_PURPLE]
 
-/** @param {GameModel} model @param {string} name */
-function gameEvent(model, name) {
+/** @param {GameModel} model */
+function gameEventScore(model) {
   const points = Number(
     (100 * Math.pow(10000 / Math.max(1, model._simulationTime), 0.3)).toFixed(),
   )
@@ -40,8 +37,99 @@ function gameEvent(model, name) {
   } catch {
     // Storage can be unavailable in private browsing.
   }
-  wavedashEvent(name)
   wavedashScore(model._score)
+}
+
+/** @param {GameModel} model */
+function gameEventNarwhalSeen(model) {
+  gameEventScore(model)
+  wavedashEvent("BEWARE")
+  if (model._audio) playAudioNear(model._audio)
+}
+
+/** @param {GameModel} model */
+function gameEventPlayerImpaled(model) {
+  gameEventScore(model)
+  wavedashEvent("FLUNG")
+  if (model._audio) playAudioImpale(model._audio)
+}
+
+/** @param {GameModel} model */
+function gameEventHunted(model) {
+  gameEventScore(model)
+  wavedashEvent("HUNTED")
+  if (model._audio) playAudioImpale(model._audio)
+}
+
+/** @param {GameModel} model */
+function gameEventFriendRescued(model) {
+  gameEventScore(model)
+  wavedashEvent("FRIEND")
+  if (model._audio) playAudioPickup(model._audio)
+}
+
+/** @param {GameModel} model */
+function gameEventSchoolComplete(model) {
+  gameEventScore(model)
+  wavedashEvent("SCHOOL")
+  if (model._audio) playAudioWin(model._audio)
+}
+
+/** @param {GameModel} model */
+function gameEventPlayerPromoted(model) {
+  gameEventScore(model)
+  wavedashEvent("PROMOTED")
+  if (model._audio) playAudioLaunch(model._audio)
+}
+
+/** @param {GameModel} model */
+function gameEventNarwhals(model) {
+  gameEventScore(model)
+  wavedashEvent("NARWHALS")
+  if (model._audio) playAudioWin(model._audio)
+}
+
+/** @param {GameModel} model */
+function gameEventPlayerDigested(model) {
+  gameEventScore(model)
+  wavedashEvent("DIGESTED")
+}
+
+/** @param {GameModel} model */
+function gameEventPlayerToothless(model) {
+  gameEventScore(model)
+  wavedashEvent("TOOTHLESS")
+}
+
+/** @param {GameModel} model */
+function gameEventLoss(model) {
+  gameEventScore(model)
+  wavedashEvent("LOSS")
+}
+
+/** @param {GameModel} model */
+function gameEventPlayerAlone(model) {
+  gameEventScore(model)
+  wavedashEvent("ALONE")
+}
+
+/** @param {GameModel} model */
+function gameEventPlayersTogether(model) {
+  gameEventScore(model)
+  wavedashEvent("TOGETHER")
+}
+
+/** @param {GameModel} model */
+function gameEventDeepReached(model) {
+  gameEventScore(model)
+  wavedashEvent("DEEP")
+}
+
+/** @param {GameModel} model */
+function gameEventPlayerFlew(model) {
+  gameEventScore(model)
+  wavedashEvent("FLY")
+  if (model._audio) playAudioLaunch(model._audio)
 }
 
 // Everything can be exported for testing/debugging
@@ -843,7 +931,7 @@ function getMusicTheme(model) {
   ) {
     if (!model._narwhalSeen) {
       model._narwhalSeen = true
-      gameEvent(model, "BEWARE")
+      gameEventNarwhalSeen(model)
     }
   }
   if (model._narwhalSeen && !model._deepReached) return "narwhal"
@@ -2515,7 +2603,7 @@ function impalePlayer(boss, player, model) {
   player._isImpaled = true
   player._velocity = { x: 0, y: 0 }
   player._inAir = false
-  if (model._audio) playAudio(model._audio, "impale")
+  if (model._audio) playAudioImpale(model._audio)
   // The throw itself awards FLUNG in launchImpaledPlayers.
   createExplosion(player._pos, "#facc15", model)
   if (!boss._impaledPlayers.includes(player)) boss._impaledPlayers.push(player)
@@ -2545,8 +2633,8 @@ function attachImpaledPlayers(boss) {
 
 /** @param {GameModel} model @param {GameNarwhalBoss} boss */
 function launchImpaledPlayers(model, boss) {
-  if (model._audio) playAudio(model._audio, "launch")
-  gameEvent(model, "FLUNG")
+  if (model._audio) playAudioLaunch(model._audio)
+  gameEventPlayerImpaled(model)
   for (const player of boss._impaledPlayers) {
     const target = {
       // Throw to the opposite side from where the narwhal caught the player,
@@ -2881,7 +2969,7 @@ export function updateFriends(model) {
       friend._isHelped = true
       friend._followingPlayer = -1
       friend._radius = 10
-      gameEvent(model, "HUNTED")
+      gameEventHunted(model)
       createExplosion(friend._pos, "#ef4444", model)
       // The angler becomes a fast hunter once it has been found.
       friend._speed = 0.45
@@ -2899,7 +2987,7 @@ export function updateFriends(model) {
       )
       const homeDy = friend._friendTarget.y - friend._pos.y
       if (Math.hypot(homeDx, homeDy) < 8) {
-        gameEvent(model, "FRIEND")
+        gameEventFriendRescued(model)
         friend._isHelped = true
         friend._followingPlayer = -1
         friend._goingHome = false
@@ -2980,7 +3068,7 @@ export function updateFriends(model) {
 
   if (!model._friendsComplete && areAllFriendsHelped(model)) {
     model._friendsComplete = true
-    gameEvent(model, "SCHOOL")
+    gameEventSchoolComplete(model)
     const boss = model._bosses[0]
     if (boss) boss._free = false
   }
@@ -3005,12 +3093,12 @@ function transformPlayerToNarwhal(player, model) {
   player._hasHorn = true
   player._isBoss = true
   player._radius = 9
-  gameEvent(model, "PROMOTED")
+  gameEventPlayerPromoted(model)
   if (
     model._players.length > 1 &&
     model._players.every((candidate) => candidate._isNarwhal)
   )
-    gameEvent(model, "NARWHALS")
+    gameEventNarwhals(model)
   createExplosion(player._pos, "#67e8f9", model)
 }
 
@@ -3157,7 +3245,7 @@ export function updateDeepNpcs(model) {
         )
         const nearDy = candidate._pos.y - npc._pos.y
         const distance = Math.hypot(nearDx, nearDy)
-        if (distance < 32 && model._audio) playAudio(model._audio, "near")
+        if (distance < 32 && model._audio) playAudioNear(model._audio)
         if (distance < nearestDistance) {
           nearestDistance = distance
           player = candidate
@@ -3170,7 +3258,7 @@ export function updateDeepNpcs(model) {
         if (Math.hypot(dx, dy) < 7) {
           player._isDead = true
           model._eaten++
-          gameEvent(model, "DIGESTED")
+          gameEventPlayerDigested(model)
           createExplosion(player._pos, "#f87171", model)
           releaseFollowers(model, player._index)
           player._respawnTimer = PLAYER_RESPAWN_DELAY
@@ -3178,8 +3266,8 @@ export function updateDeepNpcs(model) {
           player._inAir = false
           player._airTarget = null
           player._hasLamp = false
-          if (model._audio) playAudio(model._audio, "eaten")
-          if (model._audio) playAudio(model._audio, "impale")
+          if (model._audio) playAudioEaten(model._audio)
+          if (model._audio) playAudioImpale(model._audio)
         }
       } else {
         const friend = model._friends.find(
@@ -3326,8 +3414,8 @@ function handleAnglerCollisions(angler, model) {
     )
       continue
     respawnFriend(friend, model)
-    gameEvent(model, "LOSS")
-    if (model._audio) playAudio(model._audio, "friendEaten")
+    gameEventLoss(model)
+    if (model._audio) playAudioFriendEaten(model._audio)
   }
 
   for (const player of model._players) {
@@ -3347,25 +3435,25 @@ function handleAnglerCollisions(angler, model) {
       player._hasHorn = false
       player._isNarwhal = false
       player._isBoss = false
-      gameEvent(model, "TOOTHLESS")
+      gameEventPlayerToothless(model)
       player._radius = 5
       player._isDead = true
       model._eaten++
-      gameEvent(model, "DIGESTED")
+      gameEventPlayerDigested(model)
       createExplosion(player._pos, "#67e8f9", model)
       releaseFollowers(model, player._index)
       player._respawnTimer = PLAYER_RESPAWN_DELAY
       player._velocity = { x: 0, y: 0 }
-      if (model._audio) playAudio(model._audio, "eaten")
+      if (model._audio) playAudioEaten(model._audio)
     } else {
       player._isDead = true
       model._eaten++
-      gameEvent(model, "DIGESTED")
+      gameEventPlayerDigested(model)
       createExplosion(player._pos, "#f87171", model)
       releaseFollowers(model, player._index)
       player._respawnTimer = PLAYER_RESPAWN_DELAY
       player._velocity = { x: 0, y: 0 }
-      if (model._audio) playAudio(model._audio, "eaten")
+      if (model._audio) playAudioEaten(model._audio)
     }
   }
 }
@@ -3386,7 +3474,7 @@ export function pierceAngler(angler, model) {
   angler._respawnTimer = 1800
   angler._isHunting = false
   angler._velocity = { x: 0, y: 0 }
-  if (model._audio) playAudio(model._audio, "impale")
+  if (model._audio) playAudioImpale(model._audio)
   createExplosion(angler._pos, "#f8fafc", model)
 }
 
@@ -3436,7 +3524,7 @@ export function updateLampInteractions(model) {
       TURBO_MAX_ENERGY + player._turboBonus,
       player._turboEnergy + 1,
     )
-    if (model._audio) playAudio(model._audio, "pickup")
+    if (model._audio) playAudioPickup(model._audio)
   }
 }
 
@@ -3461,7 +3549,8 @@ function startJump(player, turbo = false, model) {
   player._airTarget = null
   player._airFlightTicks = 0
   const horizontalDirection = Math.sign(player._dir.x)
-  if (horizontalDirection !== 0 && player._pos.y <= 0) gameEvent(model, "FLY")
+  if (horizontalDirection !== 0 && player._pos.y <= 0)
+    gameEventPlayerFlew(model)
   const jumpSpeed = turbo ? 2.4 : 1.6
   player._airVelocity = turbo ? 1.8 : 1.6
   player._airHorizontalVelocity = horizontalDirection * jumpSpeed
@@ -3529,8 +3618,8 @@ function updateJump(player, model) {
  */
 export function update(model, inputs) {
   const playersSeparated = getLocalPlayerDistance(model) > model._size * 0.9
-  if (playersSeparated && !model._wasSeparated) gameEvent(model, "ALONE")
-  if (!playersSeparated && model._wasSeparated) gameEvent(model, "TOGETHER")
+  if (playersSeparated && !model._wasSeparated) gameEventPlayerAlone(model)
+  if (!playersSeparated && model._wasSeparated) gameEventPlayersTogether(model)
   model._wasSeparated = playersSeparated
 
   // Keep the control visualization independent of which input device is
@@ -3567,7 +3656,7 @@ export function update(model, inputs) {
     if (!player || player._free || player._isImpaled) continue
     if (player._pos.y >= model._worldHeight && !model._bottomReached) {
       model._bottomReached = true
-      gameEvent(model, "DEEP")
+      gameEventDeepReached(model)
     }
 
     if (player._isDead) {
@@ -3625,7 +3714,7 @@ export function update(model, inputs) {
       createSwimTrail(model, player, input._velocity, turbo)
       updateTurboEnergy(player, turbo, turboRequested, model._interval)
       if (input._velocity.x !== 0 || input._velocity.y !== 0) {
-        if (model._audio) playAudio(model._audio, "swim")
+        if (model._audio) playAudioSwim(model._audio)
       }
     } else {
       updateTurboEnergy(player, false, turboRequested, model._interval)
@@ -4060,6 +4149,262 @@ export function initKeyboard() {
   return Array(KEYS.length).fill(false)
 }
 
+/** @param {GameModel} model */
+function randomSeaSpawn(model) {
+  const sea = Math.floor(Math.random() * 7)
+  return {
+    x: sea * model._size + 15 + Math.random() * 70,
+    y: 15 + Math.random() * 70,
+  }
+}
+
+/** @param {GameModel} model @param {number} sea */
+function spawnDarkfriend(model, sea = Math.floor(Math.random() * 7)) {
+  const x = sea * model._size + 15 + Math.random() * 70
+  const y = 15 + Math.random() * 70
+  const dark = new GamePlayer()
+  dark._index =
+    17 + model._friends.filter((friend) => friend._isDarkfriend).length
+  dark._isFriend = true
+  dark._isDarkfriend = true
+  dark._free = false
+  dark._color = "#050505"
+  dark._pos = { x, y }
+  dark._spawnPoint = { ...dark._pos }
+  dark._friendTarget = { ...dark._pos }
+  dark._radius = 4
+  dark._speed = 1.8
+  model._friends.push(dark)
+  return dark
+}
+
+/**
+ * @param {GameModel} model
+ * @param {number} index
+ */
+function createLocalPlayer(model, index) {
+  const playerIndex = Number.isInteger(index) ? index : 0
+  model._players ??= []
+  let player = new GamePlayer()
+  player._index = playerIndex
+  player._free = false
+  player._color = playerIndex === 0 ? "orange" : "green"
+  const firstPlayer = model._players[0]
+  const adjacentOffsets = [
+    { x: 8, y: 0 },
+    { x: -8, y: 0 },
+    { x: 0, y: 8 },
+    { x: 0, y: -8 },
+  ]
+  const pos =
+    playerIndex === 1 && firstPlayer && !firstPlayer._free
+      ? (adjacentOffsets
+          .map((offset) => ({
+            x: wrapPosition(firstPlayer._pos.x + offset.x, model._worldWidth),
+            y: Math.max(
+              0,
+              Math.min(model._worldHeight, firstPlayer._pos.y + offset.y),
+            ),
+          }))
+          .find((candidate) => isSwimmable(candidate, model)) ??
+        randomSeaSpawn(model))
+      : randomSeaSpawn(model)
+  Object.assign(player._pos, pos)
+  player._spawnPoint = { ...pos }
+  player._isDead = false
+  player._respawnTimer = 0
+  model._players[playerIndex] = player
+  return player
+}
+
+/** @param {GameAudio} audio @param {string} theme */
+function setAudioTheme(audio, theme) {
+  if (audio._theme === theme) return
+  audio._theme = theme
+  audio._musicStep = 0
+}
+
+/** @param {GameAudio} audio */
+function startAudio(audio) {
+  if (!audio._enabled || audio._paused) return
+  if (!audio._context) {
+    const AudioContext = window.AudioContext
+    if (!AudioContext) return
+    audio._context = new AudioContext()
+  }
+  const context = /** @type {AudioContext} */ (audio._context)
+  // iOS starts Web Audio suspended and requires an actual user gesture to
+  // both resume it and schedule an oscillator. The inaudible short tone is
+  // the unlock step; later sounds are scheduled after resume completes.
+  if (context.state !== "running") {
+    audioTone(audio, 1, 0.01, AUDIO_SINE, 0.0001)
+    void context
+      .resume()
+      .then(() => {
+        if (audio._musicTimer && audio._enabled) playMusicNote(audio)
+      })
+      .catch(() => {})
+  }
+  if (!audio._musicTimer) {
+    audio._musicTimer = window.setInterval(() => playMusicNote(audio), 460)
+    if (context.state === "running") playMusicNote(audio)
+  }
+}
+
+/** @param {GameAudio} audio */
+function pauseAudio(audio) {
+  audio._paused = true
+  if (audio._musicTimer) window.clearInterval(audio._musicTimer)
+  audio._musicTimer = 0
+  if (audio._context?.state === "running") void audio._context.suspend()
+}
+
+/** @param {GameAudio} audio */
+function resumeAudio(audio) {
+  if (!audio._context || !audio._enabled) return
+  audio._paused = false
+  if (audio._context.state === "suspended") {
+    void audio._context
+      .resume()
+      .then(() => startAudio(audio))
+      .catch(() => {})
+  } else {
+    startAudio(audio)
+  }
+}
+
+/** @param {GameAudio} audio @param {boolean} enabled */
+function setAudioEnabled(audio, enabled) {
+  audio._enabled = enabled
+  if (!enabled) {
+    if (audio._musicTimer) window.clearInterval(audio._musicTimer)
+    audio._musicTimer = 0
+    return
+  }
+  startAudio(audio)
+}
+
+/** @param {GameAudio} audio */
+function toggleAudio(audio) {
+  setAudioEnabled(audio, !audio._enabled)
+  return audio._enabled
+}
+
+/** @param {GameAudio} audio */
+function unlockAudio(audio) {
+  // Unlocking Web Audio is separate from enabling it. Input gestures must
+  // never undo an explicit mute.
+  if (!audio._enabled) return false
+  startAudio(audio)
+  return true
+}
+
+/** @param {GameAudio} audio */
+function playMusicNote(audio) {
+  /** @type {Record<string, {notes: number[], duration: number, type: OscillatorType, volume: number}>} */
+  const themes = {
+    surface: {
+      notes: [196, 220, 246.94, 220, 196, 174.61, 196, 220],
+      duration: 0.38,
+      type: AUDIO_SINE,
+      volume: 0.021,
+    },
+    narwhal: {
+      notes: [82.41, 87.31, 82.41, 92.5, 82.41, 87.31],
+      duration: 0.3,
+      type: AUDIO_TRIANGLE,
+      volume: 0.028,
+    },
+    deep: {
+      notes: [55, 58.27, 46.25, 51.91, 41.2, 46.25],
+      duration: 0.5,
+      type: AUDIO_TRIANGLE,
+      volume: 0.025,
+    },
+    scary: {
+      notes: [65.41, 61.74, 51.91, 49, 61.74, 43.65],
+      duration: 0.42,
+      type: AUDIO_SAWTOOTH,
+      volume: 0.028,
+    },
+  }
+  const theme = themes[audio._theme] ?? themes["surface"]
+  if (!theme) return
+  audioTone(
+    audio,
+    theme.notes[audio._musicStep++ % theme.notes.length] ?? 110,
+    theme.duration,
+    theme.type,
+    theme.volume,
+  )
+}
+
+/** @param {GameAudio} audio @param {number} frequency @param {number} duration @param {OscillatorType} type @param {number} volume @param {number} [slide] */
+function audioTone(audio, frequency, duration, type, volume, slide = 0) {
+  if (!audio._enabled) return
+  const context = audio._context
+  if (!context) return
+  const now = context.currentTime
+  const oscillator = context.createOscillator()
+  const gain = context.createGain()
+  oscillator.type = type
+  oscillator.frequency.setValueAtTime(frequency, now)
+  if (slide)
+    oscillator.frequency.linearRampToValueAtTime(
+      frequency + slide,
+      now + duration,
+    )
+  gain.gain.setValueAtTime(0.0001, now)
+  gain.gain.exponentialRampToValueAtTime(volume, now + 0.01)
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration)
+  oscillator.connect(gain)
+  gain.connect(context.destination)
+  oscillator.start(now)
+  oscillator.stop(now + duration + 0.02)
+}
+
+/** @param {GameAudio} audio */
+export function playAudioSwim(audio) {
+  const now = performance.now()
+  if (now - audio._lastSwim < 140) return
+  audio._lastSwim = now
+  audioTone(audio, 360, 0.14, AUDIO_SINE, 0.022, -240)
+}
+/** @param {GameAudio} audio */
+export function playAudioImpale(audio) {
+  audioTone(audio, 95, 0.22, AUDIO_SAWTOOTH, 0.08, -55)
+}
+/** @param {GameAudio} audio */
+export function playAudioLaunch(audio) {
+  audioTone(audio, 130, 0.65, AUDIO_TRIANGLE, 0.07, 220)
+}
+/** @param {GameAudio} audio */
+export function playAudioPickup(audio) {
+  audioTone(audio, 520, 0.14, AUDIO_SINE, 0.05, 180)
+}
+/** @param {GameAudio} audio */
+export function playAudioWin(audio) {
+  audioTone(audio, 330, 0.18, AUDIO_SINE, 0.05, 110)
+  setTimeout(() => audioTone(audio, 494, 0.35, AUDIO_SINE, 0.05, 160), 130)
+}
+/** @param {GameAudio} audio */
+export function playAudioEaten(audio) {
+  audioTone(audio, 70, 0.28, AUDIO_SAWTOOTH, 0.1, -45)
+  audioTone(audio, 180, 0.12, AUDIO_SQUARE, 0.04, -90)
+}
+/** @param {GameAudio} audio */
+export function playAudioFriendEaten(audio) {
+  audioTone(audio, 180, 0.16, AUDIO_SINE, 0.06, -90)
+  audioTone(audio, 72, 0.3, AUDIO_TRIANGLE, 0.05, -20)
+}
+/** @param {GameAudio} audio */
+export function playAudioNear(audio) {
+  const now = performance.now()
+  if (now - audio._lastNearAngler < 1400) return
+  audio._lastNearAngler = now
+  audioTone(audio, 72, 0.4, AUDIO_SINE, 0.035, -18)
+}
+
 export class GameEntity {
   /** @type {GamePos} */
   _pos = { x: 0, y: 0 }
@@ -4272,74 +4617,6 @@ export class GameView {
   _size = 0
 }
 
-/** @param {GameModel} model */
-function randomSeaSpawn(model) {
-  const sea = Math.floor(Math.random() * 7)
-  return {
-    x: sea * model._size + 15 + Math.random() * 70,
-    y: 15 + Math.random() * 70,
-  }
-}
-
-/** @param {GameModel} model @param {number} sea */
-function spawnDarkfriend(model, sea = Math.floor(Math.random() * 7)) {
-  const x = sea * model._size + 15 + Math.random() * 70
-  const y = 15 + Math.random() * 70
-  const dark = new GamePlayer()
-  dark._index =
-    17 + model._friends.filter((friend) => friend._isDarkfriend).length
-  dark._isFriend = true
-  dark._isDarkfriend = true
-  dark._free = false
-  dark._color = "#050505"
-  dark._pos = { x, y }
-  dark._spawnPoint = { ...dark._pos }
-  dark._friendTarget = { ...dark._pos }
-  dark._radius = 4
-  dark._speed = 1.8
-  model._friends.push(dark)
-  return dark
-}
-
-/**
- * @param {GameModel} model
- * @param {number} index
- */
-function createLocalPlayer(model, index) {
-  const playerIndex = Number.isInteger(index) ? index : 0
-  model._players ??= []
-  let player = new GamePlayer()
-  player._index = playerIndex
-  player._free = false
-  player._color = playerIndex === 0 ? "orange" : "green"
-  const firstPlayer = model._players[0]
-  const adjacentOffsets = [
-    { x: 8, y: 0 },
-    { x: -8, y: 0 },
-    { x: 0, y: 8 },
-    { x: 0, y: -8 },
-  ]
-  const pos =
-    playerIndex === 1 && firstPlayer && !firstPlayer._free
-      ? (adjacentOffsets
-          .map((offset) => ({
-            x: wrapPosition(firstPlayer._pos.x + offset.x, model._worldWidth),
-            y: Math.max(
-              0,
-              Math.min(model._worldHeight, firstPlayer._pos.y + offset.y),
-            ),
-          }))
-          .find((candidate) => isSwimmable(candidate, model)) ??
-        randomSeaSpawn(model))
-      : randomSeaSpawn(model)
-  Object.assign(player._pos, pos)
-  player._spawnPoint = { ...pos }
-  player._isDead = false
-  player._respawnTimer = 0
-  model._players[playerIndex] = player
-  return player
-}
-
 class GameAudio {
   /** @type {AudioContext | null} */
   _context = null
@@ -4350,180 +4627,4 @@ class GameAudio {
   _theme = "surface"
   _paused = false
   _enabled = true
-}
-
-/** @param {GameAudio} audio @param {string} theme */
-function setAudioTheme(audio, theme) {
-  if (audio._theme === theme) return
-  audio._theme = theme
-  audio._musicStep = 0
-}
-
-/** @param {GameAudio} audio */
-function startAudio(audio) {
-  if (!audio._enabled || audio._paused) return
-  if (!audio._context) {
-    const AudioContext = window.AudioContext
-    if (!AudioContext) return
-    audio._context = new AudioContext()
-  }
-  const context = /** @type {AudioContext} */ (audio._context)
-  // iOS starts Web Audio suspended and requires an actual user gesture to
-  // both resume it and schedule an oscillator. The inaudible short tone is
-  // the unlock step; later sounds are scheduled after resume completes.
-  if (context.state !== "running") {
-    audioTone(audio, 1, 0.01, "sine", 0.0001)
-    void context
-      .resume()
-      .then(() => {
-        if (audio._musicTimer && audio._enabled) playMusicNote(audio)
-      })
-      .catch(() => {})
-  }
-  if (!audio._musicTimer) {
-    audio._musicTimer = window.setInterval(() => playMusicNote(audio), 460)
-    if (context.state === "running") playMusicNote(audio)
-  }
-}
-
-/** @param {GameAudio} audio */
-function pauseAudio(audio) {
-  audio._paused = true
-  if (audio._musicTimer) window.clearInterval(audio._musicTimer)
-  audio._musicTimer = 0
-  if (audio._context?.state === "running") void audio._context.suspend()
-}
-
-/** @param {GameAudio} audio */
-function resumeAudio(audio) {
-  if (!audio._context || !audio._enabled) return
-  audio._paused = false
-  if (audio._context.state === "suspended") {
-    void audio._context
-      .resume()
-      .then(() => startAudio(audio))
-      .catch(() => {})
-  } else {
-    startAudio(audio)
-  }
-}
-
-/** @param {GameAudio} audio @param {boolean} enabled */
-function setAudioEnabled(audio, enabled) {
-  audio._enabled = enabled
-  if (!enabled) {
-    if (audio._musicTimer) window.clearInterval(audio._musicTimer)
-    audio._musicTimer = 0
-    return
-  }
-  startAudio(audio)
-}
-
-/** @param {GameAudio} audio */
-function toggleAudio(audio) {
-  setAudioEnabled(audio, !audio._enabled)
-  return audio._enabled
-}
-
-/** @param {GameAudio} audio */
-function unlockAudio(audio) {
-  // Unlocking Web Audio is separate from enabling it. Input gestures must
-  // never undo an explicit mute.
-  if (!audio._enabled) return false
-  startAudio(audio)
-  return true
-}
-
-/** @param {GameAudio} audio */
-function playMusicNote(audio) {
-  /** @type {Record<string, {notes: number[], duration: number, type: OscillatorType, volume: number}>} */
-  const themes = {
-    surface: {
-      notes: [196, 220, 246.94, 220, 196, 174.61, 196, 220],
-      duration: 0.38,
-      type: "sine",
-      volume: 0.021,
-    },
-    narwhal: {
-      notes: [82.41, 87.31, 82.41, 92.5, 82.41, 87.31],
-      duration: 0.3,
-      type: "triangle",
-      volume: 0.028,
-    },
-    deep: {
-      notes: [55, 58.27, 46.25, 51.91, 41.2, 46.25],
-      duration: 0.5,
-      type: "triangle",
-      volume: 0.025,
-    },
-    scary: {
-      notes: [65.41, 61.74, 51.91, 49, 61.74, 43.65],
-      duration: 0.42,
-      type: "sawtooth",
-      volume: 0.028,
-    },
-  }
-  const theme = themes[audio._theme] ?? themes["surface"]
-  if (!theme) return
-  audioTone(
-    audio,
-    theme.notes[audio._musicStep++ % theme.notes.length] ?? 110,
-    theme.duration,
-    theme.type,
-    theme.volume,
-  )
-}
-
-/** @param {GameAudio} audio @param {number} frequency @param {number} duration @param {OscillatorType} type @param {number} volume @param {number} [slide] */
-function audioTone(audio, frequency, duration, type, volume, slide = 0) {
-  if (!audio._enabled) return
-  const context = audio._context
-  if (!context) return
-  const now = context.currentTime
-  const oscillator = context.createOscillator()
-  const gain = context.createGain()
-  oscillator.type = type
-  oscillator.frequency.setValueAtTime(frequency, now)
-  if (slide)
-    oscillator.frequency.linearRampToValueAtTime(
-      frequency + slide,
-      now + duration,
-    )
-  gain.gain.setValueAtTime(0.0001, now)
-  gain.gain.exponentialRampToValueAtTime(volume, now + 0.01)
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration)
-  oscillator.connect(gain)
-  gain.connect(context.destination)
-  oscillator.start(now)
-  oscillator.stop(now + duration + 0.02)
-}
-
-/** @param {GameAudio} audio @param {string} effect */
-function playAudio(audio, effect) {
-  if (effect === "swim") {
-    const now = performance.now()
-    if (now - audio._lastSwim < 140) return
-    audio._lastSwim = now
-    audioTone(audio, 360, 0.14, "sine", 0.022, -240)
-  } else if (effect === "impale") {
-    audioTone(audio, 95, 0.22, "sawtooth", 0.08, -55)
-  } else if (effect === "launch") {
-    audioTone(audio, 130, 0.65, "triangle", 0.07, 220)
-  } else if (effect === "pickup") {
-    audioTone(audio, 520, 0.14, "sine", 0.05, 180)
-  } else if (effect === "win") {
-    audioTone(audio, 330, 0.18, "sine", 0.05, 110)
-    window.setTimeout(() => audioTone(audio, 494, 0.35, "sine", 0.05, 160), 130)
-  } else if (effect === "eaten") {
-    audioTone(audio, 70, 0.28, "sawtooth", 0.1, -45)
-    audioTone(audio, 180, 0.12, "square", 0.04, -90)
-  } else if (effect === "friendEaten") {
-    audioTone(audio, 180, 0.16, "sine", 0.06, -90)
-    audioTone(audio, 72, 0.3, "triangle", 0.05, -20)
-  } else if (effect === "near") {
-    const now = performance.now()
-    if (now - audio._lastNearAngler < 1400) return
-    audio._lastNearAngler = now
-    audioTone(audio, 72, 0.4, "sine", 0.035, -18)
-  }
 }

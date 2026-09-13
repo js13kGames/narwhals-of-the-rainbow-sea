@@ -18,3 +18,4 @@ var innerWidth
 var innerHeight
 var devicePixelRatio
 var localStorage
+var setTimeout
