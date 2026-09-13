@@ -392,7 +392,7 @@ export function init(
   model._audio = new GameAudio()
   window.MODEL = model // DEV ONLY
   player2.hidden = false
-  player2.textContent = "➕"
+  player2.textContent = "2P"
   restart?.addEventListener("pointerdown", (event) => {
     event.preventDefault()
     window.location.reload()
@@ -414,7 +414,7 @@ export function init(
     if (model._player2Enabled) createLocalPlayer(model, 1)
     else discardPlayer(model, 1)
     player2.hidden = false
-    player2.textContent = model._player2Enabled ? "➖" : "➕"
+    player2.textContent = model._player2Enabled ? "1P" : "2P"
   })
   devListenDeep() // DEV ONLY
   devListenGather(model) // DEV ONLY
@@ -1758,7 +1758,7 @@ function drawMobileControl(
   ctx.fillStyle = "#fef08a"
   ctx.fillText("⚡", turboCenter.x, turboCenter.y)
   ctx.fillStyle = "#f8fafcaa"
-  ctx.fillText(label, center.x, center.y - radius * 1.18)
+  ctx.fillText(label, center.x, center.y - radius * 0.9)
 }
 
 /**
