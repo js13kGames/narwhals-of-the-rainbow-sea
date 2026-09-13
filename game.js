@@ -4304,7 +4304,7 @@ function playMusicNote(audio) {
   /** @type {Record<string, {notes: number[], duration: number, type: OscillatorType, volume: number}>} */
   const themes = {
     surface: {
-      notes: [196, 220, 246.94, 220, 196, 174.61, 196, 220],
+      notes: [196, 220, 247, 262, 294, 330, 370, 330, 294, 262, 220, 196],
       duration: 0.38,
       type: AUDIO_SINE,
       volume: 0.021,
@@ -4368,7 +4368,7 @@ export function playAudioSwim(audio) {
   const now = performance.now()
   if (now - audio._lastSwim < 140) return
   audio._lastSwim = now
-  audioTone(audio, 360, 0.14, AUDIO_SINE, 0.022, -240)
+  audioTone(audio, 280, 0.16, AUDIO_TRIANGLE, 0.014, -100)
 }
 /** @param {GameAudio} audio */
 export function playAudioImpale(audio) {
