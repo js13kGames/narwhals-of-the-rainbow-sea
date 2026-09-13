@@ -1,15 +1,15 @@
 // Only constants, no global state
-const PI = Math.PI
-const TAU = PI * 2
-const TURBO_MAX_ENERGY = 3
-const TURBO_DRAIN_PER_SECOND = 2
-const TURBO_RECHARGE_PER_SECOND = 1
-const PLAYER_RESPAWN_DELAY = 1000
-const ACTIONS = ["up", "left", "down", "right", "action"]
-const AUDIO_SINE = "sine"
-const AUDIO_SQUARE = "square"
-const AUDIO_TRIANGLE = "triangle"
-const AUDIO_SAWTOOTH = "sawtooth"
+var PI = Math.PI
+var TAU = PI * 2
+var TURBO_MAX_ENERGY = 3
+var TURBO_DRAIN_PER_SECOND = 2
+var TURBO_RECHARGE_PER_SECOND = 1
+var PLAYER_RESPAWN_DELAY = 1000
+var ACTIONS = ["up", "left", "down", "right", "action"]
+var AUDIO_SINE = /** @type {const} */ ("sine")
+var AUDIO_SQUARE = /** @type {const} */ ("square")
+var AUDIO_TRIANGLE = /** @type {const} */ ("triangle")
+var AUDIO_SAWTOOTH = /** @type {const} */ ("sawtooth")
 var COLOR_RED = /** @readonly} */ "oklch(0.65 0.22 25)"
 var COLOR_ORANGE = /** @readonly} */ "oklch(0.72 0.19 50)"
 var COLOR_YELLOW = /** @readonly} */ "oklch(0.88 0.18 95)"
@@ -24,6 +24,230 @@ var COLOR_DEEP = /** @readonly} */ "#030712"
 var COLOR_FAINT = /** @readonly} */ "#0004"
 // prettier-ignore
 var RAINBOW = [COLOR_RED, COLOR_ORANGE, COLOR_YELLOW, COLOR_GREEN, COLOR_CYAN, COLOR_BLUE, COLOR_PURPLE]
+
+export class GameEntity {
+  /** @type {GamePos} */
+  _pos = { x: 0, y: 0 }
+  /** @type {GamePos | null} */
+  _oldPos = null
+  _radius = 0
+  _speed = 0
+  _velocity = { x: 0, y: 0 }
+  /** @type {GameVelocity} */
+  _dir = { x: 1, y: 0 }
+  _airHeight = 0
+  _oldAirHeight = 0
+  // Angles are in radians, matching CanvasRenderingContext2D.rotate().
+  _angle = 0
+  _oldAngle = 0
+  _renderAngle = 0
+  _inputIdleTime = 0
+  _free = true
+  // This is a render-only swim sway. It does not alter collision or network
+  // positions, so fish can look alive without becoming harder to control.
+  _swimWaveAmplitude = 1.1
+  _swimWaveSpeed = 0.0035
+}
+
+export class GamePlayer extends GameEntity {
+  _index = 0
+  _opacity = 1
+  /** @override */
+  _radius = 5
+  /** @override */
+  _speed = 3
+  _energy = 0
+  _turboEnergy = TURBO_MAX_ENERGY
+  _turboBonus = 0
+  _score = 0 // Player _score
+  _color = "ORANGE" // Will be set based on index
+  _isBoss = false
+  _isThrusting = false
+  _isAngler = false
+  _isFriend = false
+  _isDarkfriend = false
+  _isFound = false
+  _isHelped = false
+  _isDistressed = false
+  _isGathered = false
+  _homeSea = -1
+  _followingPlayer = -1
+  _goingHome = false
+  /** @type {GamePos} */
+  _friendTarget = { x: 0, y: 0 }
+  _isHunting = false
+  _lampTimer = 0
+  _rumbl = { _duration: 0, _ready: false }
+  /** @type {GamePos} */
+  _spawnPoint = { x: 0, y: 0 }
+  _respawnTimer = 0
+  _isDead = false
+  _isImpaled = false
+  _hasLamp = false
+  _inAir = false
+  _airVelocity = 0
+  _airHorizontalVelocity = 0
+  /** @type {GamePos | null} */
+  _airTarget = null
+  _airFlightTicks = 0
+  _isNarwhal = false
+  _hasHorn = false
+}
+
+export class GameBackgroundPlayer extends GamePlayer {
+  _remoteId = ""
+  /** @type {GamePos} */
+  _nextPos = { x: 0, y: 0 }
+}
+
+export class GameNarwhalBoss extends GamePlayer {
+  /** @override */
+  _isBoss = true
+  /** @override */
+  _isNarwhal = true
+  /** @override */
+  _isThrusting = false
+  /** @override */
+  _radius = 12.6
+  /** @override */
+  _speed = 0.35
+  /** @override */
+  _color = "#f8fafc"
+  /** @type {GamePlayer[]} */
+  _impaledPlayers = []
+  _isLaunching = false
+}
+
+export class GameAnglerFish extends GamePlayer {
+  /** @override */
+  _isAngler = true
+  /** @override */
+  _radius = 10
+  /** @override */
+  _speed = 0.18
+  /** @override */
+  _color = "#050505"
+  /** @type {GamePos} */
+  _nextPos = { x: 100, y: 335 }
+  _wasInDeep = true
+}
+
+export class GameItem extends GameEntity {
+  /** @override */
+  _radius = 3
+  _color = "yellow"
+  _isLamp = false
+  _isStar = false
+}
+
+export class GameParticle extends GameEntity {
+  /** @override */
+  _radius = 1
+  /** @override */
+  _speed = 2
+  /** @override */
+  _velocity = { x: 0, y: 0 }
+  _color = "white"
+  _lifetime = 0
+  _maxLifetime = 500 // 500ms _lifetime
+  _isSpeedLine = false
+  _trailAngle = 0
+  _trailLength = 1
+}
+
+export class GameModel {
+  _simulationTime = 0
+  _score = 0
+  _eaten = 0
+  _pierced = 0
+  _stars = 0
+  _wasDeep = false
+  _highScore = 0
+  _highScoreKey = location.pathname.slice(1)
+  _wasSeparated = false
+  _bottomReached = false
+  _frameTime = 0
+  _interval = 50
+  _speed = 0
+  _size = 100
+  _worldWidth = 700
+  _worldHeight = 350
+  _camera = { x: 50, y: 50 }
+  _oldCamera = { x: 50, y: 50 }
+  _renderCamera = { x: 50, y: 50 }
+  _cameraTarget = { x: 50, y: 50 }
+  _splitCameras = [
+    { x: 50, y: 50 },
+    { x: 50, y: 50 },
+  ]
+  _oldSplitCameras = [
+    { x: 50, y: 50 },
+    { x: 50, y: 50 },
+  ]
+  _splitViewActive = false
+  _splitMidpoint = { x: 50, y: 50 }
+  _narwhalSeen = false
+  _deepReached = false
+  _tunnelOpened = false
+  _player2Enabled = false
+  /** @type {GameInput[]} */
+  _mobileInputs = [{ _action: false }, { _action: false }]
+  /** @type {[{id: number, start: GamePos, current: GamePos} | null, {id: number, start: GamePos, current: GamePos} | null]} */
+  _mobilePointers = [null, null]
+  /** @type {[number | null, number | null]} */
+  _mobileTurboPointers = [null, null]
+  _gearAngles = [0, 0]
+  _oldGearAngles = [0, 0]
+  _gearRenderAngles = [0, 0]
+  _gearInputTypes = ["keyboard", "keyboard"]
+  /** @type {(GamePos | undefined)[]} */
+  _gearMovement = [undefined, undefined]
+  /** @type {GamePlayer[]} */
+  _players = []
+  /** @type {GameBackgroundPlayer[]} */
+  _backgroundPlayers = []
+  /** @type {GamePlayer[]} */
+  _friends = []
+  _friendsComplete = false
+  /** @type {GameNarwhalBoss[]} */
+  _bosses = []
+  /** @type {GameAnglerFish[]} */
+  _deepNpcs = []
+  /** @type {WebSocket | undefined} */
+  _ws
+  /** @type {GameAudio | undefined} */
+  _audio
+  _clientId = ""
+  _nextBroadcast = 1000
+  /** @type {GamePos[]} */
+  _lastBroadcastPos = []
+  /** @type {GameItem[]} */
+  _items = []
+  /** @type {GameParticle[]} */
+  _particles = []
+
+  constructor() {
+    this._speed = this._interval / 100
+  }
+}
+
+export class GameView {
+  _offset = { x: 0, y: 0 }
+  _scale = 0
+  _size = 0
+}
+
+class GameAudio {
+  /** @type {AudioContext | null} */
+  _context = null
+  _musicTimer = 0
+  _musicStep = 0
+  _lastSwim = 0
+  _lastNearAngler = 0
+  _theme = "surface"
+  _paused = false
+  _enabled = true
+}
 
 /** @param {GameModel} model */
 function gameEventScore(model) {
@@ -4366,9 +4590,9 @@ function audioTone(audio, frequency, duration, type, volume, slide = 0) {
 /** @param {GameAudio} audio */
 export function playAudioSwim(audio) {
   const now = performance.now()
-  if (now - audio._lastSwim < 140) return
+  if (now - audio._lastSwim < 220) return
   audio._lastSwim = now
-  audioTone(audio, 280, 0.16, AUDIO_TRIANGLE, 0.014, -100)
+  audioTone(audio, 220, 0.1, AUDIO_SINE, 0.009, -60)
 }
 /** @param {GameAudio} audio */
 export function playAudioImpale(audio) {
@@ -4403,228 +4627,4 @@ export function playAudioNear(audio) {
   if (now - audio._lastNearAngler < 1400) return
   audio._lastNearAngler = now
   audioTone(audio, 72, 0.4, AUDIO_SINE, 0.035, -18)
-}
-
-export class GameEntity {
-  /** @type {GamePos} */
-  _pos = { x: 0, y: 0 }
-  /** @type {GamePos | null} */
-  _oldPos = null
-  _radius = 0
-  _speed = 0
-  _velocity = { x: 0, y: 0 }
-  /** @type {GameVelocity} */
-  _dir = { x: 1, y: 0 }
-  _airHeight = 0
-  _oldAirHeight = 0
-  // Angles are in radians, matching CanvasRenderingContext2D.rotate().
-  _angle = 0
-  _oldAngle = 0
-  _renderAngle = 0
-  _inputIdleTime = 0
-  _free = true
-  // This is a render-only swim sway. It does not alter collision or network
-  // positions, so fish can look alive without becoming harder to control.
-  _swimWaveAmplitude = 1.1
-  _swimWaveSpeed = 0.0035
-}
-
-export class GamePlayer extends GameEntity {
-  _index = 0
-  _opacity = 1
-  /** @override */
-  _radius = 5
-  /** @override */
-  _speed = 3
-  _energy = 0
-  _turboEnergy = TURBO_MAX_ENERGY
-  _turboBonus = 0
-  _score = 0 // Player _score
-  _color = "ORANGE" // Will be set based on index
-  _isBoss = false
-  _isThrusting = false
-  _isAngler = false
-  _isFriend = false
-  _isDarkfriend = false
-  _isFound = false
-  _isHelped = false
-  _isDistressed = false
-  _isGathered = false
-  _homeSea = -1
-  _followingPlayer = -1
-  _goingHome = false
-  /** @type {GamePos} */
-  _friendTarget = { x: 0, y: 0 }
-  _isHunting = false
-  _lampTimer = 0
-  _rumbl = { _duration: 0, _ready: false }
-  /** @type {GamePos} */
-  _spawnPoint = { x: 0, y: 0 }
-  _respawnTimer = 0
-  _isDead = false
-  _isImpaled = false
-  _hasLamp = false
-  _inAir = false
-  _airVelocity = 0
-  _airHorizontalVelocity = 0
-  /** @type {GamePos | null} */
-  _airTarget = null
-  _airFlightTicks = 0
-  _isNarwhal = false
-  _hasHorn = false
-}
-
-export class GameBackgroundPlayer extends GamePlayer {
-  _remoteId = ""
-  /** @type {GamePos} */
-  _nextPos = { x: 0, y: 0 }
-}
-
-export class GameNarwhalBoss extends GamePlayer {
-  /** @override */
-  _isBoss = true
-  /** @override */
-  _isNarwhal = true
-  /** @override */
-  _isThrusting = false
-  /** @override */
-  _radius = 12.6
-  /** @override */
-  _speed = 0.35
-  /** @override */
-  _color = "#f8fafc"
-  /** @type {GamePlayer[]} */
-  _impaledPlayers = []
-  _isLaunching = false
-}
-
-export class GameAnglerFish extends GamePlayer {
-  /** @override */
-  _isAngler = true
-  /** @override */
-  _radius = 10
-  /** @override */
-  _speed = 0.18
-  /** @override */
-  _color = "#050505"
-  /** @type {GamePos} */
-  _nextPos = { x: 100, y: 335 }
-  _wasInDeep = true
-}
-
-export class GameItem extends GameEntity {
-  /** @override */
-  _radius = 3
-  _color = "yellow"
-  _isLamp = false
-  _isStar = false
-}
-
-export class GameParticle extends GameEntity {
-  /** @override */
-  _radius = 1
-  /** @override */
-  _speed = 2
-  /** @override */
-  _velocity = { x: 0, y: 0 }
-  _color = "white"
-  _lifetime = 0
-  _maxLifetime = 500 // 500ms _lifetime
-  _isSpeedLine = false
-  _trailAngle = 0
-  _trailLength = 1
-}
-
-export class GameModel {
-  _simulationTime = 0
-  _score = 0
-  _eaten = 0
-  _pierced = 0
-  _stars = 0
-  _wasDeep = false
-  _highScore = 0
-  _highScoreKey = location.pathname.slice(1)
-  _wasSeparated = false
-  _bottomReached = false
-  _frameTime = 0
-  _interval = 50
-  _speed = 0
-  _size = 100
-  _worldWidth = 700
-  _worldHeight = 350
-  _camera = { x: 50, y: 50 }
-  _oldCamera = { x: 50, y: 50 }
-  _renderCamera = { x: 50, y: 50 }
-  _cameraTarget = { x: 50, y: 50 }
-  _splitCameras = [
-    { x: 50, y: 50 },
-    { x: 50, y: 50 },
-  ]
-  _oldSplitCameras = [
-    { x: 50, y: 50 },
-    { x: 50, y: 50 },
-  ]
-  _splitViewActive = false
-  _splitMidpoint = { x: 50, y: 50 }
-  _narwhalSeen = false
-  _deepReached = false
-  _tunnelOpened = false
-  _player2Enabled = false
-  /** @type {GameInput[]} */
-  _mobileInputs = [{ _action: false }, { _action: false }]
-  /** @type {[{id: number, start: GamePos, current: GamePos} | null, {id: number, start: GamePos, current: GamePos} | null]} */
-  _mobilePointers = [null, null]
-  /** @type {[number | null, number | null]} */
-  _mobileTurboPointers = [null, null]
-  _gearAngles = [0, 0]
-  _oldGearAngles = [0, 0]
-  _gearRenderAngles = [0, 0]
-  _gearInputTypes = ["keyboard", "keyboard"]
-  /** @type {(GamePos | undefined)[]} */
-  _gearMovement = [undefined, undefined]
-  /** @type {GamePlayer[]} */
-  _players = []
-  /** @type {GameBackgroundPlayer[]} */
-  _backgroundPlayers = []
-  /** @type {GamePlayer[]} */
-  _friends = []
-  _friendsComplete = false
-  /** @type {GameNarwhalBoss[]} */
-  _bosses = []
-  /** @type {GameAnglerFish[]} */
-  _deepNpcs = []
-  /** @type {WebSocket | undefined} */
-  _ws
-  /** @type {GameAudio | undefined} */
-  _audio
-  _clientId = ""
-  _nextBroadcast = 1000
-  /** @type {GamePos[]} */
-  _lastBroadcastPos = []
-  /** @type {GameItem[]} */
-  _items = []
-  /** @type {GameParticle[]} */
-  _particles = []
-
-  constructor() {
-    this._speed = this._interval / 100
-  }
-}
-
-export class GameView {
-  _offset = { x: 0, y: 0 }
-  _scale = 0
-  _size = 0
-}
-
-class GameAudio {
-  /** @type {AudioContext | null} */
-  _context = null
-  _musicTimer = 0
-  _musicStep = 0
-  _lastSwim = 0
-  _lastNearAngler = 0
-  _theme = "surface"
-  _paused = false
-  _enabled = true
 }
