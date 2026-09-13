@@ -3907,7 +3907,7 @@ export function update(model, inputs) {
     player._oldPos = null
     player._oldAirHeight = player._airHeight
     const input = inputs[i]
-    const turboRequested = !playersSeparated && Boolean(input?._turbo)
+    const turboRequested = Boolean(input?._turbo)
 
     if (i === 1 && hasPlayerInput(input)) player._inputIdleTime = 0
 
