@@ -572,7 +572,9 @@ export function init(
 // release stripping removes that assignment and runs the relay init.
 // eslint-disable-next-line no-useless-assignment
 var initNow = true
+// eslint-disable-next-line no-useless-assignment
 initNow = false // DEV ONLY
+initNow = false // WAVEDASH ONLY
 // @ts-ignore
 if (initNow)
   init(new WebSocket("wss://relay.js13kgames.com/narwhals-of-the-rainbow-sea"))

@@ -1,5 +1,5 @@
 import Wavedash from "https://esm.sh/@wvdsh/sdk-js"
-import init from "./game.js"
+import { init } from "./game.js"
 
 globalThis.Wavedash ??= Wavedash
 
@@ -44,4 +44,4 @@ globalThis.wavedashEvent = wavedashEvent
 globalThis.wavedashScore = wavedashScore
 Wavedash.init({ debug: true })
 void setupLeaderboard()
-init(canvas.getContext("2d"))
+init(undefined)
