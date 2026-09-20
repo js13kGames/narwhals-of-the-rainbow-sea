@@ -426,14 +426,17 @@ function stripDevOnlyLines(source) {
 
 /** @param {string} source */
 function stripReleaseLines(source) {
-  return stripDevOnlyLines(source)
-    .split("\n")
-    .filter((line) => !/wavedash/i.test(line))
-    .map((line) => {
-      if (line.startsWith("export default ")) return line
-      return line.startsWith("export ") ? line.slice(7) : line
-    })
-    .join("\n")
+  return (
+    stripDevOnlyLines(source)
+      .split("\n")
+      // This also removes build-specific overrides such as `// WAVEDASH ONLY`.
+      .filter((line) => !/wavedash/i.test(line))
+      .map((line) => {
+        if (line.startsWith("export default ")) return line
+        return line.startsWith("export ") ? line.slice(7) : line
+      })
+      .join("\n")
+  )
 }
 
 /** @param {string} source @param {number} buildId @param {boolean} mangle @param {boolean} beautify */
@@ -617,9 +620,7 @@ function releaseHtml(source, variant) {
       element.setAttribute("src", element.getAttribute("data-src") || "")
     }
   } else {
-    for (const script of document.querySelectorAll(
-      'script[data-build="game"]',
-    ))
+    for (const script of document.querySelectorAll('script[data-build="game"]'))
       script.textContent = ""
     for (const element of document.querySelectorAll('[data-build="wavedash"]'))
       element.remove()
