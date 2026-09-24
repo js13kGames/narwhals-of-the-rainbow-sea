@@ -1,4 +1,8 @@
 ---
+genres:
+  - adventure
+  - party
+  - action
 video: https://www.youtube.com/watch?v=vRBNPTaUsOs
 directors_cut: https://scmx.github.io/js13k2026
 # See github.com/js13kGames/hello-world for supported frontmatter
